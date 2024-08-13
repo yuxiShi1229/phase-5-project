@@ -10,12 +10,11 @@ class User(db.Model, SerializerMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String, nullable=False, unique=True)
 
-    # Relationships
-    sent_transactions = db.relationship('Transaction', foreign_keys='Transaction.sender_id', backref='sender', cascade="all, delete-orphan")
-    received_transactions = db.relationship('Transaction', foreign_keys='Transaction.receiver_id', backref='receiver', cascade="all, delete-orphan")
+    sent_transactions = db.relationship('Transaction', foreign_keys='Transaction.sender_id', back_populates='sender', cascade="all, delete-orphan")
+    received_transactions = db.relationship('Transaction', foreign_keys='Transaction.receiver_id', back_populates='receiver', cascade="all, delete-orphan")
 
-    sent_friendships = db.relationship('Friendship', foreign_keys='Friendship.requester_id', backref='requester', cascade="all, delete-orphan")
-    received_friendships = db.relationship('Friendship', foreign_keys='Friendship.requestee_id', backref='requestee', cascade="all, delete-orphan")
+    sent_friendships = db.relationship('Friendship', foreign_keys='Friendship.requester_id', back_populates='requester', cascade="all, delete-orphan")
+    received_friendships = db.relationship('Friendship', foreign_keys='Friendship.requestee_id', back_populates='requestee', cascade="all, delete-orphan")
 
     transactions = association_proxy('sent_transactions', 'receiver')
     friendships = association_proxy('sent_friendships', 'requestee')
@@ -34,6 +33,9 @@ class Transaction(db.Model, SerializerMixin):
     amount = db.Column(db.Float, nullable=False)
     complete = db.Column(db.Boolean, default=False)
 
+    sender = db.relationship('User', foreign_keys=[sender_id], back_populates='sent_transactions')
+    receiver = db.relationship('User', foreign_keys=[receiver_id], back_populates='received_transactions')
+
     serialize_rules = ('-sender.sent_transactions', '-receiver.received_transactions')
 
     def __repr__(self):
@@ -45,6 +47,9 @@ class Friendship(db.Model, SerializerMixin):
     id = db.Column(db.Integer, primary_key=True)
     requester_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     requestee_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+
+    requester = db.relationship('User', foreign_keys=[requester_id], back_populates='sent_friendships')
+    requestee = db.relationship('User', foreign_keys=[requestee_id], back_populates='received_friendships')
 
     serialize_rules = ('-requester.sent_friendships', '-requestee.received_friendships')
 
