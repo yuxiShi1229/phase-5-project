@@ -1,14 +1,14 @@
 from sqlalchemy_serializer import SerializerMixin
 from sqlalchemy.ext.associationproxy import association_proxy
+from config import db, bcrypt
+from sqlalchemy.orm import validates
 
-from config import db
-
-# Models go here!
 class User(db.Model, SerializerMixin):
     __tablename__ = "users"
 
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String, nullable=False, unique=True)
+    _password_hash = db.Column(db.String, nullable=False)
 
     sent_transactions = db.relationship('Transaction', foreign_keys='Transaction.sender_id', back_populates='sender', cascade="all, delete-orphan")
     received_transactions = db.relationship('Transaction', foreign_keys='Transaction.receiver_id', back_populates='receiver', cascade="all, delete-orphan")
@@ -20,6 +20,23 @@ class User(db.Model, SerializerMixin):
     friendships = association_proxy('sent_friendships', 'requestee')
 
     serialize_rules = ('-sent_transactions.sender', '-received_transactions.receiver', '-sent_friendships.requester', '-received_friendships.requestee')
+
+    @property
+    def password_hash(self):
+        raise AttributeError('Password hash is not a readable attribute.')
+
+    @password_hash.setter
+    def password_hash(self, password):
+        self._password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
+
+    def authenticate(self, password):
+        return bcrypt.check_password_hash(self._password_hash, password)
+    
+    @validates('username')
+    def validate_username(self, key, username):
+        if not username:
+            raise ValueError('Username is required.')
+        return username
 
     def __repr__(self):
         return f"<User {self.username}>"
